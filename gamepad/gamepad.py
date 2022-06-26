@@ -114,12 +114,17 @@ common_names = {
   "z": "ry",
 }
 
+
+        
+
 device_name_keywords = (
   "game",
   "gaming",
   "gamepad",
   "controller",
   "joystick",
+  "microsoft x-box 360 pad",
+  "8bitdo"
 )
 
 
@@ -141,6 +146,7 @@ class Gamepad:
         self._device = device
         self._file = None
         self._name = ""
+        self._device_name = ""
         self._handlers = []
         self._connected = False
 
@@ -157,6 +163,16 @@ class Gamepad:
         self._thread.start()
 
     # private methods
+    
+    def _get_common_name(self, key):
+        if "microsoft x-box 360 pad" in self._device_name.lower():
+            return key
+        else:
+            try:
+                return common_names[key]
+            except KeyError:
+                return key
+            
 
     def _get_device_list(self):
         for filename in os.listdir("/dev/input"):
@@ -196,6 +212,7 @@ class Gamepad:
 
         for button in buf[:self._get_num_buttons(_file)]:
             button_name = button_names.get(button, 'unknown(0x%03x)' % button)
+            print(button_name)
             self._button_map.append(button_name)
             self._button_states[button_name] = False
 
@@ -203,24 +220,24 @@ class Gamepad:
     def _handle_button_event(self, button, value):
         for h in self._handlers:
             if (
-              h.event == common_names[button] or
-              h.event == common_names[button] + ":pressed"):
+              h.event == button or
+              h.event == button + ":pressed"):
 
                 h(value, h.event)
 
     def _handle_button_released_event(self, button, value):
         for h in self._handlers:
-            if h.event == common_names[button] + ":released":
+            if h.event == button + ":released":
                 h(value, h.event)
 
     def _handle_button_changed_event(self, button, value):
         for h in self._handlers:
-            if h.event == common_names[button] + ":changed":
+            if h.event == button + ":changed":
                 h(value, h.event)
 
     def _handle_axis_event(self, axis, value):
         for h in self._handlers:
-            if h.event == common_names[axis]:
+            if h.event == axis:
                 h(value, h.event)
 
     def _read_device(self):
@@ -254,11 +271,13 @@ class Gamepad:
 
         for kw in device_name_keywords:
             if kw in name.lower():
+                self._device_name = name
                 self._device = device_path
                 self._file = _file
                 self._connected = True
                 self._on_connect()
                 return
+        raise Exception("Device name not found: please update 'device_name_keywords' in gamepad.py: " + name)
 
     def _update_connection(self):
         if not (self._device and
@@ -318,20 +337,22 @@ class Gamepad:
 
     @property
     def inputs(self):
-        return common_names.values()
+        #return button_names.values()
+        return list( button_names.values()) + list (axis_names.values())
 
     def axis(self, axis):
         if self._connected:
             for k, v in self._axis_states.items():
-                if common_names[k] == axis:
+                if k == axis:
                     return v
+            return -99
         else:
             return 0.0
 
     def button(self, button):
         if self._connected:
             for k, v in self._button_states.items():
-                if common_names[k] == button:
+                if k == button:
                     return bool(v)
         else:
             return False
@@ -353,10 +374,14 @@ class Gamepad:
 
         def f(value, event):
             print("Gamepad: {} => {}".format(event, value))
-
+        
+        # Axis and Buttons
         for event in self.inputs:
+
+            # Axis
             self.on(event, f)
 
+            # Button
             self.on(event+":pressed", f)
             self.on(event+":released", f)
             self.on(event+":changed", f)

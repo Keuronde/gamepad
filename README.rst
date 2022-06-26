@@ -14,6 +14,13 @@ Python Gamepad API
         :alt: Documentation Status
 
 
+Warning
+-------
+
+This API is probably not ready for use for your gamepad.
+Here are the stuff I need to do to make it work with my gamepad :
+* Find the gamepad name and add it to the list `device_name_keywords` in gamepad.py
+* Depending on your usage you may want to update `common_names` which is a mapping of the button/axis
 
 
 An asynchronous (threaded) API for interfacing with gamepads.
